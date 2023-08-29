@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33829.357
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KinzigBackUp", "KinzigBackUp\KinzigBackUp.csproj", "{AC7EF68C-F9A9-4B19-B780-46E8E68B42B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unit Tests", "TestProject1\Unit Tests.csproj", "{6D0DAEDE-38DD-4716-8774-F4BDC8AB388C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC7EF68C-F9A9-4B19-B780-46E8E68B42B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC7EF68C-F9A9-4B19-B780-46E8E68B42B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC7EF68C-F9A9-4B19-B780-46E8E68B42B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC7EF68C-F9A9-4B19-B780-46E8E68B42B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D0DAEDE-38DD-4716-8774-F4BDC8AB388C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D0DAEDE-38DD-4716-8774-F4BDC8AB388C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D0DAEDE-38DD-4716-8774-F4BDC8AB388C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D0DAEDE-38DD-4716-8774-F4BDC8AB388C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1E06C4C1-C4D7-44EF-88E0-92671546BF5E}
+	EndGlobalSection
+EndGlobal
