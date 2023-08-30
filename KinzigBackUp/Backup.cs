@@ -509,12 +509,10 @@ namespace KinzigBackUp
         /// </summary>
         protected void DataInfrastructureCheck()
         {
-            while (!GateDataInfrastructure.WaitOne(0))//Wenn das Gate geschlossen ist wird diese Schleife ausgeführt
+            while (!GateDataInfrastructure.WaitOne(1000))//Wenn das Gate geschlossen ist wird diese Schleife ausgeführt
             {
                 if (GateCallToClose.WaitOne(100))
                     Thread.CurrentThread.Abort();
-
-                Thread.Sleep(1000);
             }
         }
 
@@ -576,7 +574,7 @@ namespace KinzigBackUp
                 Filter = "*.*",
                 EnableRaisingEvents = true,
                 IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Attributes | NotifyFilters.Size | NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.LastAccess | NotifyFilters.Security
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Attributes | NotifyFilters.Size | NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.Security
             };
             Spiegel.Created += OnCreated;
             Spiegel.Changed += OnChanged;
@@ -606,17 +604,16 @@ namespace KinzigBackUp
         }
         private void OnChanged (object sender, FileSystemEventArgs e)
         {
-            e.ChangeType
-            if (Path.HasExtension(e.FullPath))
-            {
-                SpiegelnToDoFilePaths.Add(e.FullPath);
-                SpiegelnToDoFileActions.Add((int)ToDoActions.Geändert);
-            }
-            else
-            {
-                SpiegelnToDoFolderPaths.Add(e.FullPath);
-                SpiegelnToDoFolderActions.Add((int)ToDoActions.Geändert);
-            }
+            //if (Path.HasExtension(e.FullPath))
+            //{
+            //    SpiegelnToDoFilePaths.Add(e.FullPath);
+            //    SpiegelnToDoFileActions.Add((int)ToDoActions.Geändert);
+            //}
+            //else
+            //{
+            //    SpiegelnToDoFolderPaths.Add(e.FullPath);
+            //    SpiegelnToDoFolderActions.Add((int)ToDoActions.Geändert);
+            //}
         }
         private void OnDeleted (object sender, FileSystemEventArgs e)
         {
@@ -706,42 +703,10 @@ namespace KinzigBackUp
                                     try
                                     {
                                         string Datei = SpiegelnToDoFilePaths[SkipIndex];
-                                        while (IsFileReady(Datei)) ;
-                                        File.Copy(Datei, BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), true);    //Temporäre Kopie erstellen
-                                                                                                                            //Die Daten  teilweise Binär abgleichen (Original und Temporäre Datei)
-                                        using (FileStream OriginalDatei = new FileStream(Datei, FileMode.Open, FileAccess.Read, FileShare.None), BackupDatei = new FileStream(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), FileMode.Open, FileAccess.Read, FileShare.None))
-                                        {
-                                            using (BinaryReader ReaderOriginal = new BinaryReader(OriginalDatei), ReaderBackup = new BinaryReader(BackupDatei))
-                                            {
-                                                long onepercent = OriginalDatei.Length / 100;
-                                                for (int j = 0; OriginalDatei.Position < OriginalDatei.Length; j++)
-                                                {
-                                                    if (!(OriginalDatei.ReadByte() == BackupDatei.ReadByte()) || (OriginalDatei.Length != BackupDatei.Length))
-                                                        throw new FileNotFoundException();
-                                                    if (j % 10 == 0)
-                                                    {
-                                                        OriginalDatei.Position = onepercent * (j / 10);
-                                                        BackupDatei.Position = OriginalDatei.Position;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        //Falls bereits eine Kopie vorhanden, diese löschen
-                                        if (File.Exists(BackupPfad))
-                                        {
-                                            while (IsFileReady(BackupPfad)) ;
-                                            File.Delete(BackupPfad);
-                                        }
-                                        //Die temporäre Datei an ihre Position verschieben
-                                        File.Move(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), BackupPfad);
-                                        if (!File.Exists(BackupPfad))
-                                            throw new FileNotFoundException();
-                                        else
-                                        {
-                                            SpiegelnToDoFilePaths.RemoveAt(SkipIndex);
-                                            SpiegelnToDoFileActions.RemoveAt(SkipIndex);
-                                            break;
-                                        }
+                                        Transaktion(Datei);
+                                        SpiegelnToDoFilePaths.RemoveAt(SkipIndex);
+                                        SpiegelnToDoFileActions.RemoveAt(SkipIndex);
+                                        break;
                                     }
                                     catch (IOException e)
                                     {
@@ -767,6 +732,12 @@ namespace KinzigBackUp
                                     try
                                     {
                                         DataInfrastructureCheck();
+                                        if(!File.Exists(BackupPfad))
+                                        {
+                                            SpiegelnToDoFileActions.RemoveAt(SkipIndex);
+                                            SpiegelnToDoFilePaths.RemoveAt(SkipIndex);
+                                            break;
+                                        }
                                         if (!IsFileReady(BackupPfad))
                                         {
                                             File.Delete(BackupPfad);
@@ -892,84 +863,7 @@ namespace KinzigBackUp
                             break;
                         case (int)ToDoActions.Geändert:
                             {
-                                for (int i = 0; i < 6; i++)
-                                {                                    
-                                    try
-                                    {
-                                        ToDoOrdnerLeafs.Clear();
-                                        ToDoFiles.Clear();
-                                        AllFoldersInToSave.Clear();
-                                        DataInfrastructureCheck();
-                                        if(Directory.Exists(BackupPfad))                                        
-                                            OrdnerLöschen(BackupPfad);
-
-                                        GetToDoOrdnerLeafsAndAllFoldersInToSave(SpiegelnToDoFolderPaths[SkipIndex]);
-                                        GetToDoFiles();
-
-                                        for (int j = 0; j < ToDoOrdnerLeafs.Count; j++)
-                                        {
-                                            string Unterordner = ToDoOrdnerLeafs[j];
-                                            DataInfrastructureCheck();
-                                            Directory.CreateDirectory(BUPathBuilder(Unterordner));
-                                            if (Directory.Exists(BUPathBuilder(Unterordner)))
-                                                continue;
-                                            else
-                                                j--;
-                                        }
-
-                                        for (int j = 0; j < ToDoFiles.Count; j++)
-                                        {
-                                            DataInfrastructureCheck();
-                                            string Datei = ToDoFiles[j];
-                                            while (IsFileReady(Datei)) ;
-                                            File.Copy(Datei, BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), true);    //Temporäre Kopie erstellen
-                                            //Die Daten  teilweise Binär abgleichen (Original und Temporäre Datei)
-                                            using (FileStream OriginalDatei = new FileStream(Datei, FileMode.Open, FileAccess.Read, FileShare.None), BackupDatei = new FileStream(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), FileMode.Open, FileAccess.Read, FileShare.None))
-                                            {
-                                                using (BinaryReader ReaderOriginal = new BinaryReader(OriginalDatei), ReaderBackup = new BinaryReader(BackupDatei))
-                                                {
-                                                    long onepercent = OriginalDatei.Length / 100;
-                                                    for (int k = 0; OriginalDatei.Position < OriginalDatei.Length; k++)
-                                                    {
-                                                        if (!(OriginalDatei.ReadByte() == BackupDatei.ReadByte()) || (OriginalDatei.Length != BackupDatei.Length))
-                                                            throw new FileNotFoundException();
-                                                        if (k % 10 == 0)
-                                                        {
-                                                            OriginalDatei.Position = onepercent * (k / 10);
-                                                            BackupDatei.Position = OriginalDatei.Position;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            //Die temporäre Datei an ihre Position verschieben
-                                            File.Move(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), BUPathBuilder(Datei));
-                                            if (!File.Exists(BUPathBuilder(Datei)))
-                                                throw new FileNotFoundException();
-                                        }  
-
-
-                                        if (!Directory.Exists(BackupPfad))
-                                            throw new DirectoryNotFoundException();
-                                        else
-                                        {
-                                            ToDoOrdnerLeafs.Clear();
-                                            ToDoFiles.Clear();
-                                            AllFoldersInToSave.Clear();
-                                            SpiegelnToDoFolderPaths.RemoveAt(SkipIndex);
-                                            SpiegelnToDoFolderActions.RemoveAt(SkipIndex);
-                                            break;
-                                        }
-                                    }
-                                    catch (IOException e)
-                                    {
-                                        System.Windows.MessageBox.Show(e.Message);
-                                    }
-                                    if (i >= 5)
-                                    {
-                                        SkipIndex++;
-                                        break;
-                                    }
-                                }
+                                
                             }
                             break;
                         case (int)ToDoActions.Gelöscht:
@@ -1014,63 +908,12 @@ namespace KinzigBackUp
                                         DataInfrastructureCheck();
                                         if (Directory.Exists(BackupPfad) && !Directory.Exists(Renamed))
                                         {
-                                            ToDoOrdnerLeafs.Clear();
-                                            ToDoFiles.Clear();
-                                            AllFoldersInToSave.Clear();
-                                            
-                                            AllFoldersInToSave.Add(SpiegelnToDoFolderPathsRenamed[SkipIndexRename]);
-                                            GetToDoOrdnerLeafsAndAllFoldersInToSave(SpiegelnToDoFolderPathsRenamed[SkipIndexRename]);
-                                            GetToDoFiles();
-
-                                            for (int j = 0; j < ToDoOrdnerLeafs.Count; j++)
-                                            {
-                                                string Unterordner = ToDoOrdnerLeafs[j];
-                                                DataInfrastructureCheck();
-                                                Directory.CreateDirectory(BUPathBuilder(Unterordner));
-                                                if (Directory.Exists(BUPathBuilder(Unterordner)))
-                                                    continue;
-                                                else
-                                                    j--;
-                                            }
-
-                                            for (int j = 0; j < ToDoFiles.Count; j++)
-                                            {
-                                                DataInfrastructureCheck();
-                                                string Datei = ToDoFiles[j];
-                                                while (IsFileReady(Datei)) ;
-                                                File.Copy(Datei, BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), true);    //Temporäre Kopie erstellen
-                                                                                                                                    //Die Daten  teilweise Binär abgleichen (Original und Temporäre Datei)
-                                                using (FileStream OriginalDatei = new FileStream(Datei, FileMode.Open, FileAccess.Read, FileShare.None), BackupDatei = new FileStream(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), FileMode.Open, FileAccess.Read, FileShare.None))
-                                                {
-                                                    using (BinaryReader ReaderOriginal = new BinaryReader(OriginalDatei), ReaderBackup = new BinaryReader(BackupDatei))
-                                                    {
-                                                        long onepercent = OriginalDatei.Length / 100;
-                                                        for (int k = 0; OriginalDatei.Position < OriginalDatei.Length; k++)
-                                                        {
-                                                            if (!(OriginalDatei.ReadByte() == BackupDatei.ReadByte()) || (OriginalDatei.Length != BackupDatei.Length))
-                                                                throw new FileNotFoundException();
-                                                            if (k % 10 == 0)
-                                                            {
-                                                                OriginalDatei.Position = onepercent * (k / 10);
-                                                                BackupDatei.Position = OriginalDatei.Position;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                //Die temporäre Datei an ihre Position verschieben
-                                                File.Move(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), BUPathBuilder(Datei));
-                                                if (!File.Exists(BUPathBuilder(Datei)))
-                                                    throw new FileNotFoundException();
-                                            }
-                                            OrdnerLöschen(BackupPfad);
+                                            Directory.Move(BackupPfad, Renamed);
                                         }
                                         if (!Directory.Exists(Renamed) || Directory.Exists(BackupPfad))
                                             throw new DirectoryNotFoundException();
                                         else
                                         {
-                                            ToDoOrdnerLeafs.Clear();
-                                            ToDoFiles.Clear();
-                                            AllFoldersInToSave.Clear();
                                             SpiegelnToDoFolderPaths.RemoveAt(SkipIndex);
                                             SpiegelnToDoFolderPathsRenamed.RemoveAt(SkipIndexRename);
                                             SpiegelnToDoFolderActions.RemoveAt(SkipIndex);
@@ -1211,6 +1054,53 @@ namespace KinzigBackUp
                     AllFilesInBackup.Add(Datei);
                 GetAlleBackupOrdnerUndDateien(Unterordner, recursiv = false);
             }
+        }
+        protected void Transaktion(string Datei)
+        {
+            bool match = false;
+            while (IsFileReady(Datei)) ;
+            File.Copy(Datei, BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), true);    //Temporäre Kopie erstellen
+            //Die Daten  teilweise Binär abgleichen (Original und Temporäre Datei)
+            using (FileStream OriginalDatei = new FileStream(Datei, FileMode.Open, FileAccess.Read, FileShare.ReadWrite), BackupDatei = new FileStream(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                using (BinaryReader ReaderOriginal = new BinaryReader(OriginalDatei), ReaderBackup = new BinaryReader(BackupDatei))
+                {
+                    long onepercent = OriginalDatei.Length / 100;
+                    if (onepercent == 0)
+                        onepercent = 4;
+                    for (int j = 1; j < 100; j++)
+                    {
+                        DataInfrastructureCheck();
+                        int original = OriginalDatei.ReadByte();
+                        int backup = BackupDatei.ReadByte();
+
+                        if (!(original == backup) || (OriginalDatei.Length != BackupDatei.Length))
+                        {
+                            match = false;
+                            break;
+                        }
+                        else
+                            match = true;
+                        if (original == -1 && backup == -1)
+                            break;
+
+                        OriginalDatei.Position = onepercent * j;
+                        BackupDatei.Position = OriginalDatei.Position;
+                    }
+                }
+            }
+            if (match == false)
+                throw new IOException("Temp und Original stimmen nicht überein!");
+            //Falls bereits eine Kopie vorhanden, diese löschen
+            if (File.Exists(BUPathBuilder(Datei)))
+            {
+                while (IsFileReady(BUPathBuilder(Datei))) ;
+                File.Delete(BUPathBuilder(Datei));
+            }
+            //Die temporäre Datei an ihre Position verschieben
+            File.Move(BackupTemp + "\\" + BackupID + Path.GetExtension(Datei), BUPathBuilder(Datei));
+            if (!File.Exists(BUPathBuilder(Datei)))
+                throw new FileNotFoundException();
         }
     }
 
